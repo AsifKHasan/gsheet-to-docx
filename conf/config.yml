@@ -1,0 +1,20 @@
+index-worksheet:         "-toc"
+
+gsheet-read-wait-seconds:   30
+gsheet-read-try-count:      20
+
+dirs:
+  data-dir:              "../data"
+  output-dir:            "../out"
+
+files:
+  google-cred:           "./credential.json"
+  docx-styles:           "./styles-doer.yml"
+  docx-template:         "./template-doer.docx"
+
+gsheets:
+  - "replace-with-gsheet-name"
+
+docx-related:
+  update-toc:           true
+  generate-pdf:         true

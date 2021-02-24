@@ -1,0 +1,46 @@
+argparse
+PyYAML
+lxml
+httplib2
+yamllint
+
+pandas
+numpy
+
+oauth2client
+PyDrive
+python-docx
+pygsheets
+
+pillow
+
+jinja2
+latex
+
+progress
+tqdm
+termcolor
+colorama
+
+pywin32
+
+# requires poppler
+pdf2image
+
+# graphviz
+# blockdiag
+# seqdiag
+# nwdiag
+# pysvg-py3
+
+# xlsxwriter
+# openpyxl
+
+# gitpython
+
+# PyRSMQ
+# pyzmq
+
+# flask
+# flask_api
+# flask-cors
