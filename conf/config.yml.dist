@@ -14,7 +14,7 @@ files:
   docx-template:         "./template-doer.docx"
 
 gsheets:
-  - "LivenessCheck__requirement-spec"
+  - "replace-with-gsheet-name"
 
 docx-related:
   update-toc:           true
