@@ -90,7 +90,6 @@ class DocxFromGsheet(object):
 
 		self._CONFIG['dirs']['data-dir'] = os.path.abspath('{0}/{1}'.format(config_dir, self._CONFIG['dirs']['data-dir']))
 		self._CONFIG['dirs']['output-dir'] = os.path.abspath('{0}/{1}'.format(config_dir, self._CONFIG['dirs']['output-dir']))
-		self._CONFIG['dirs']['template-dir'] = os.path.abspath('{0}/{1}'.format(config_dir, self._CONFIG['dirs']['template-dir']))
 		self._CONFIG['dirs']['temp-dir'] = os.path.abspath('{0}/tmp'.format(self._CONFIG['dirs']['output-dir']))
 		if not os.path.exists(self._CONFIG['dirs']['temp-dir']):
 			os.makedirs(self._CONFIG['dirs']['temp-dir'])
