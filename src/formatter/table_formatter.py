@@ -27,16 +27,17 @@ def generate(data, doc, section_specs, context):
             add_horizontal_line(paragraph)
         else:
             if data['section'] != '':
-                doc.add_heading('{0} : {1}'.format(data['section'], data['heading']).strip(), level=data['level'])
+                doc.add_heading('{0} - {1}'.format(data['section'], data['heading']).strip(), level=data['level'])
             else:
                 doc.add_heading('{0}'.format(data['heading']).strip(), level=data['level'])
 
     if 'contents' in data:
         if data['contents']:
             if 'sheets' in data['contents']:
+                # insert_content (in helper/docx/docx_writer) is our main work function
                 insert_content(data['contents'], doc, page_width, None, None)
 
-            # for embedded gsheets, we get section list containing sheet content, instead of sheet content
+            # for embedded gsheets, 'contents' does not contain the actual content to render, rather we get a list of sections where each section contains the actual content
             elif 'sections' in data['contents']:
                 for section in data['contents']['sections']:
                     content_type = section['content-type']

@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
 
+'''
+various utilities for formatting a docx
+'''
+
 import lxml
 
 from docx import Document

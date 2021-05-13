@@ -61,10 +61,12 @@ def process(sheet, section_data, context):
             for cell_data in row_data['values']:
                 if 'userEnteredValue' in cell_data:
                     userEnteredValue = cell_data['userEnteredValue']
+
+                    # process where cell contains formulas - image, link to another worksheet, link to another document in gdrive or url
                     if 'formulaValue' in userEnteredValue:
                         formulaValue = userEnteredValue['formulaValue']
 
-                        # IMAGE/image
+                        # content can be an IMAGE/image with an image formula like "=image(....)"
                         m = re.match('=IMAGE\((?P<name>.+)\)', formulaValue, re.IGNORECASE)
                         if m and m.group('name') is not None:
                             row_height = response['sheets'][0]['data'][0]['rowMetadata'][row]['pixelSize']
@@ -72,12 +74,28 @@ def process(sheet, section_data, context):
                             if result:
                                 response['sheets'][0]['data'][0]['rowData'][row]['values'][val]['userEnteredValue']['image'] = result
 
-                        # HYPERLINK/hyperlink
-                        m = re.match('=HYPERLINK\("#gid=(?P<ws_gid>.+)","(?P<ws_title>.+)"\)', formulaValue, re.IGNORECASE)
+                        # content can be a HYPERLINK/hyperlink to another worksheet
+                        m = re.match('=HYPERLINK\("#gid=(?P<ws_gid>.+)",\s*"(?P<ws_title>.+)"\)', formulaValue, re.IGNORECASE)
                         if m and m.group('ws_gid') is not None and m.group('ws_title') is not None:
                             # debug(m.group('ws_gid'), m.group('ws_title'))
                             if worksheet_exists(sheet, m.group('ws_title')):
                                 cell_data['contents'] = process(sheet, {'link': m.group('ws_title')}, context)
+
+                        # content can be a HYPERLINK/hyperlink to another gdrive file (for now we only allow text only content, that is a text file)
+                        m = re.match('=HYPERLINK\("(?P<link_url>.+)",\s*"(?P<link_title>.+)"\)', formulaValue, re.IGNORECASE)
+                        if m and m.group('link_url') is not None and m.group('link_title') is not None:
+                            url = m.group('link_url')
+                            debug('found a link to [{0}] at [{1}]'. format(url, m.group('link_url')))
+
+                            # this may be a drive file
+                            if url.startswith('https://drive.google.com/file/d/'):
+                                text = read_drive_file(url, context)
+                                if text not None: cell_data['formattedValue'] = text
+
+                            # or it may be a web url
+                            elif url.startswith('http'):
+                                text = read_web_content(url)
+                                if text not None: cell_data['formattedValue'] = text
 
                 val = val + 1
         row = row + 1

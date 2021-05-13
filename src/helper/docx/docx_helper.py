@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
 
+'''
+Helper to initialize and manipulate docx styles, mostly custom styles not present in the template docx 
+'''
+
 import yaml
 
 from docx import Document

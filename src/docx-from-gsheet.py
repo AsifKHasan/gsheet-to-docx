@@ -3,6 +3,7 @@
 usage:
 ./docx-from-gsheet.py --config '../conf/config.yml'
 python docx-from-gsheet.py --config "../conf/config.yml"
+pip list --outdated --format=freeze | grep -v '^\-e' | cut -d = -f 1  | xargs -n1 pip install -U
 '''
 import os
 import sys

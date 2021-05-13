@@ -26,7 +26,7 @@ def generate(data, doc, section_specs, context):
             add_horizontal_line(paragraph)
         else:
             if data['section'] != '':
-                doc.add_heading('{0} : {1}'.format(data['section'], data['heading']).strip(), level=data['level'])
+                doc.add_heading('{0} - {1}'.format(data['section'], data['heading']).strip(), level=data['level'])
             else:
                 doc.add_heading('{0}'.format(data['heading']).strip(), level=data['level'])
 

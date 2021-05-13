@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
 
+'''
+various utilities for rendering gsheet cell content into a docx, mostly for Formatter of type Table
+'''
+
 import json
 import time
 import pprint
@@ -108,6 +112,7 @@ def render_cell(doc, cell, cell_data, width, r, c, start_row, start_col, merge_d
     cell.width = Inches(width)
     paragraph = cell.paragraphs[0]
 
+    # handle the notes first
     # if there is a note, see if it is a JSON, it may contain style, page-numering, new-page, keep-with-next directive etc.
     note_json = {}
     if 'note' in cell_data:
@@ -158,7 +163,7 @@ def render_cell(doc, cell, cell_data, width, r, c, start_row, start_col, merge_d
         borders = cell_data['effectiveFormat']['borders']
         set_cell_border(cell, top=ooxml_border_from_gsheet_border(borders, 'top'), bottom=ooxml_border_from_gsheet_border(borders, 'bottom'), start=ooxml_border_from_gsheet_border(borders, 'left'), end=ooxml_border_from_gsheet_border(borders, 'right'))
 
-    # cell can be merged, so we need width after merge (in In)
+    # cell can be merged, so we need width after merge (in Inches)
     cell_width = merged_cell_width(r, c, start_row, start_col, merge_data, column_widths)
 
     # images
@@ -286,6 +291,7 @@ def insert_content(data, doc, container_width, container=None, cell=None):
             row_values = row_data[r]['values']
 
             for c in range(0, len(row_values)):
+                # render_cell is the main work function for rendering an individual cell (eg., gsheet cell -> docx table cell)
                 render_cell(doc, row[c], row_values[c], column_widths[c], r, c, start_row, start_col, merge_data, column_widths)
 
             if r % 100 == 0:

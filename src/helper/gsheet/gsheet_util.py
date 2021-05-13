@@ -4,6 +4,8 @@ import re
 import os.path
 from os import path
 
+import urllib3
+
 import pygsheets
 import urllib.request
 from PIL import Image
@@ -282,4 +284,17 @@ def download_pdf_from_drive(url, tmp_dir, drive):
         return {'pdf_name': pdf_name, 'pdf_path': local_path}
     except:
         error('.... could not download pdf: {0}'.format(pdf_url))
+        return None
+
+def read_web_content(web_url):
+    url = web_url.strip()
+
+    # read content from url
+    try:
+        http = urllib3.PoolManager()
+        response = http.request('GET', url)
+        text = response.data.decode('utf-8')
+        return text
+    except:
+        error('.... could not read content from url: {0}'.format(web_url))
         return None
