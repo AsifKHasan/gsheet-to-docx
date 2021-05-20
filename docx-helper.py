@@ -1,5 +1,3 @@
-import pprint
-
 import httplib2
 import pygsheets
 
@@ -7,10 +5,9 @@ from oauth2client.service_account import ServiceAccountCredentials
 from googleapiclient import discovery
 from googleapiclient import errors
 from pydrive.auth import GoogleAuth
-from pydrive.drive import GoogleDrive
 
 cred_json_file = '../conf/credential.json'
-
+gsheet_name = 'NBR-AW-NSW__comparison-study'
 _G = pygsheets.authorize(service_account_file=cred_json_file)
 
 credentials = ServiceAccountCredentials.from_json_keyfile_name(cred_json_file, scopes=['https://www.googleapis.com/auth/drive', 'https://www.googleapis.com/auth/spreadsheets'])
@@ -19,9 +16,13 @@ credentials.authorize(httplib2.Http())
 gauth = GoogleAuth()
 gauth.credentials = credentials
 
-#_service = discovery.build('sheets', 'v4', credentials=credentials)
-_service = discovery.build('drive', 'v3', credentials=credentials)
-_drive = GoogleDrive(gauth)
+_service = discovery.build('sheets', 'v4', credentials=credentials)
+
+gsheet = _G.open(gsheet_name)
+
+
+
+from pydrive.drive import GoogleDrive
 
 def copy_file(service, origin_file_id, copy_title):
     """
