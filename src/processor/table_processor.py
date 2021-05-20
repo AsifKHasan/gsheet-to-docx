@@ -90,12 +90,12 @@ def process(sheet, section_data, context):
                             # this may be a drive file
                             if url.startswith('https://drive.google.com/file/d/'):
                                 text = read_drive_file(url, context)
-                                if text not None: cell_data['formattedValue'] = text
+                                if text is not None: cell_data['formattedValue'] = text
 
                             # or it may be a web url
                             elif url.startswith('http'):
                                 text = read_web_content(url)
-                                if text not None: cell_data['formattedValue'] = text
+                                if text is not None: cell_data['formattedValue'] = text
 
                 val = val + 1
         row = row + 1

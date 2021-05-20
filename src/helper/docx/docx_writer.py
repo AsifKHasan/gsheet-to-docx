@@ -108,9 +108,16 @@ def add_section(doc, section_data, section_spec, use_existing=False):
 
     return section
 
-def render_cell(doc, cell, cell_data, width, r, c, start_row, start_col, merge_data, column_widths):
+def render_cell(doc, cell, cell_data, width, r, c, start_row, start_col, merge_data, column_widths, table_spacing):
     cell.width = Inches(width)
     paragraph = cell.paragraphs[0]
+
+    # paragraph spacing
+    if table_spacing == 'no-spacing':
+        pf = paragraph.paragraph_format
+        pf.line_spacing = 1.0
+        pf.space_before = Pt(0)
+        pf.space_after = Pt(0)
 
     # handle the notes first
     # if there is a note, see if it is a JSON, it may contain style, page-numering, new-page, keep-with-next directive etc.
@@ -237,6 +244,7 @@ def render_cell(doc, cell, cell_data, width, r, c, start_row, start_col, merge_d
         run = paragraph.add_run(text)
         set_character_style(run, text_format)
 
+
 def insert_content(data, doc, container_width, container=None, cell=None):
     start_time = int(round(time.time() * 1000))
     current_time = int(round(time.time() * 1000))
@@ -284,15 +292,38 @@ def insert_content(data, doc, container_width, container=None, cell=None):
     if not container: info('  .. rendering cell for {0} rows'.format(total_rows))
     last_time = current_time
 
+    # TODO: handle table related instructions from notes. table related instructions are given as notes in the very first cell (row 0, col 0). they may be
+    # table-style - to apply style to whole table (NOT IMPLEMENTED YET)
+    # table-spacing - no-spacing means cell paragraphs must not have any spacing throughout the table, useful for source code rendering
+    # table-header-rows - number of header rows to repeat across pages (NOT IMPLEMENTED YET)
+
     row_data = data['sheets'][0]['data'][0]['rowData']
+
+    # get the first cell notes
+    # if there is a note, see if it is a JSON, it may contain table specific styling directives
+    first_cell_data = row_data[0]['values'][0]
+    first_cell_note_json = {}
+    if 'note' in first_cell_data:
+        try:
+            first_cell_note_json = json.loads(first_cell_data['note'])
+        except json.JSONDecodeError:
+            pass
+
+    # handle table-spacing in notes, if the value is no-spacing then all cell paragraphs must have no spacing
+    if 'table-spacing' in first_cell_note_json:
+        table_spacing = first_cell_note_json['table-spacing']
+        # debug('table-spacing is [{0}]'.format(table_spacing))
+    else:
+        table_spacing = ''
+
     for r in range(0, len(row_data)):
         if 'values' in row_data[r]:
             row = table.row_cells(r)
             row_values = row_data[r]['values']
 
             for c in range(0, len(row_values)):
-                # render_cell is the main work function for rendering an individual cell (eg., gsheet cell -> docx table cell)
-                render_cell(doc, row[c], row_values[c], column_widths[c], r, c, start_row, start_col, merge_data, column_widths)
+                # render_cell () is the main work function for rendering an individual cell (eg., gsheet cell -> docx table cell)
+                render_cell(doc, row[c], row_values[c], column_widths[c], r, c, start_row, start_col, merge_data, column_widths, table_spacing)
 
             if r % 100 == 0:
                 current_time = int(round(time.time() * 1000))
