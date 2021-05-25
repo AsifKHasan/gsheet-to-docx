@@ -245,7 +245,7 @@ def render_cell(doc, cell, cell_data, width, r, c, start_row, start_col, merge_d
         set_character_style(run, text_format)
 
 
-def insert_content(data, doc, container_width, container=None, cell=None):
+def insert_content(data, doc, container_width, container=None, cell=None, repeat_rows=0):
     start_time = int(round(time.time() * 1000))
     current_time = int(round(time.time() * 1000))
     if not container: debug('.. inserting contents')
@@ -316,6 +316,14 @@ def insert_content(data, doc, container_width, container=None, cell=None):
     else:
         table_spacing = ''
 
+    repeating_row_count = 0
+    # handle repeat-rows directive. The value is an integer telling us how many rows (from the first row) should be repeated in pages for this table
+    if 'repeat-rows' in first_cell_note_json:
+        repeating_row_count = int(first_cell_note_json['repeat-rows'])
+        # debug('repeat-rows is [{0}]'.format(repeating_row_count))
+    else:
+        repeating_row_count = 0
+
     for r in range(0, len(row_data)):
         if 'values' in row_data[r]:
             row = table.row_cells(r)
@@ -351,6 +359,11 @@ def insert_content(data, doc, container_width, container=None, cell=None):
 
         ending_cell = table.cell(endRowIndex, endColumnIndex)
         starting_cell.merge(ending_cell)
+
+    # handle repeat_rows
+    if repeating_row_count > 0:
+        debug('reapating row - {0}'.format(repeating_row_count))
+        set_repeat_table_header(table.rows[repeating_row_count-1])
 
     current_time = int(round(time.time() * 1000))
     if not container: info('  .. cells merged : {0} ms\n'.format(current_time - last_time))

@@ -400,3 +400,13 @@ def insert_image(cell, image_spec):
     if image_spec is not None:
         run = cell.paragraphs[0].add_run()
         run.add_picture(image_spec['path'], height=Pt(image_spec['height']), width=Pt(image_spec['width']))
+
+def set_repeat_table_header(row):
+    ''' set repeat table row on every new page
+    '''
+    tr = row._tr
+    trPr = tr.get_or_add_trPr()
+    tblHeader = OxmlElement('w:tblHeader')
+    tblHeader.set(qn('w:val'), "true")
+    trPr.append(tblHeader)
+    return row
