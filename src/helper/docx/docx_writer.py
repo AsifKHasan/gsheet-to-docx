@@ -19,95 +19,6 @@ from helper.docx.docx_util import *
 VALIGN = {'TOP': WD_CELL_VERTICAL_ALIGNMENT.TOP, 'MIDDLE': WD_CELL_VERTICAL_ALIGNMENT.CENTER, 'BOTTOM': WD_CELL_VERTICAL_ALIGNMENT.BOTTOM}
 HALIGN = {'LEFT': WD_ALIGN_PARAGRAPH.LEFT, 'CENTER': WD_ALIGN_PARAGRAPH.CENTER, 'RIGHT': WD_ALIGN_PARAGRAPH.RIGHT, 'JUSTIFY': WD_ALIGN_PARAGRAPH.JUSTIFY}
 
-def merged_cell_width(row, col, start_row, start_col, merges, column_widths):
-    cell_width = 0
-    for merge in merges:
-        if merge['startRowIndex'] == (row + start_row) and merge['startColumnIndex'] == (col + start_col):
-            for c in range(col, merge['endColumnIndex'] - start_col):
-                cell_width = cell_width + column_widths[c]
-
-    if cell_width == 0:
-        return column_widths[col]
-    else:
-        return cell_width
-
-def set_header(doc, section, header_first, header_odd, header_even, actual_width, linked_to_previous=False):
-    first_page_header = section.first_page_header
-    odd_page_header = section.header
-    even_page_header = section.even_page_header
-
-    section.first_page_header.is_linked_to_previous = linked_to_previous
-    section.header.is_linked_to_previous = linked_to_previous
-    section.even_page_header.is_linked_to_previous = linked_to_previous
-
-    if len(first_page_header.tables) == 0:
-        if header_first is not None: insert_content(header_first, doc, actual_width, container=first_page_header, cell=None)
-
-    if len(odd_page_header.tables) == 0:
-        if header_odd is not None: insert_content(header_odd, doc, actual_width, container=odd_page_header, cell=None)
-
-    if len(even_page_header.tables) == 0:
-        if header_even is not None: insert_content(header_even, doc, actual_width, container=even_page_header, cell=None)
-
-def set_footer(doc, section, footer_first, footer_odd, footer_even, actual_width, linked_to_previous=False):
-    first_page_footer = section.first_page_footer
-    odd_page_footer = section.footer
-    even_page_footer = section.even_page_footer
-
-    section.first_page_footer.is_linked_to_previous = linked_to_previous
-    section.footer.is_linked_to_previous = linked_to_previous
-    section.even_page_footer.is_linked_to_previous = linked_to_previous
-
-    if len(first_page_footer.tables) == 0:
-        if footer_first is not None: insert_content(footer_first, doc, actual_width, container=first_page_footer, cell=None)
-
-    if len(odd_page_footer.tables) == 0:
-        if footer_odd is not None: insert_content(footer_odd, doc, actual_width, container=odd_page_footer, cell=None)
-
-    if len(even_page_footer.tables) == 0:
-        if footer_even is not None: insert_content(footer_even, doc, actual_width, container=even_page_footer, cell=None)
-
-def add_section(doc, section_data, section_spec, use_existing=False):
-    if section_spec['break'] == 'CONTINUOUS':
-        # if it is the only section, do not add, just get the last (current) section
-        if use_existing:
-            section = doc.sections[-1]
-        else:
-            section = doc.add_section(WD_SECTION.CONTINUOUS)
-    else:
-        # if it is the only section, do not add, just get the last (current) section
-        if use_existing:
-            section = doc.sections[-1]
-        else:
-            section = doc.add_section(WD_SECTION.NEW_PAGE)
-
-    if section_spec['orient'] == 'LANDSCAPE':
-        section.orient = WD_ORIENT.LANDSCAPE
-    else:
-        section.orient = WD_ORIENT.PORTRAIT
-
-    section.page_width = Inches(section_spec['page_width'])
-    section.page_height = Inches(section_spec['page_height'])
-    section.left_margin = Inches(section_spec['left_margin'])
-    section.right_margin = Inches(section_spec['right_margin'])
-    section.top_margin = Inches(section_spec['top_margin'])
-    section.bottom_margin = Inches(section_spec['bottom_margin'])
-    section.header_distance = Inches(section_spec['header_distance'])
-    section.footer_distance = Inches(section_spec['footer_distance'])
-    section.gutter = Inches(section_spec['gutter'])
-    section.different_first_page_header_footer = section_data['different-first-page-header-footer']
-
-    # get the actual width
-    actual_width = section.page_width.inches - section.left_margin.inches - section.right_margin.inches - section.gutter.inches
-
-    # set header if it is not set already
-    set_header(doc, section, section_data['header-first'], section_data['header-odd'], section_data['header-even'], actual_width)
-
-    # set footer if it is not set already
-    set_footer(doc, section, section_data['footer-first'], section_data['footer-odd'], section_data['footer-even'], actual_width)
-
-    return section
-
 def render_cell(doc, cell, cell_data, width, r, c, start_row, start_col, merge_data, column_widths, table_spacing):
     cell.width = Inches(width)
     paragraph = cell.paragraphs[0]
@@ -268,10 +179,11 @@ def insert_content(data, doc, container_width, container=None, cell=None):
 	# table to be added inside a cell
     elif cell is not None:
 		# insert the table in the very first paragraph of the cell
-        # cell._element.clear_content()
+        debug('embedding new table inside an existing cell'.format())
         cell.paragraphs[0].style = 'Calibri-2-Gray8'
         table = cell.add_table(table_rows, table_cols)
     else:
+        # debug('embedding new table inside the doc'.format())
         table = doc.add_table(table_rows, table_cols)
 
     # resize columns as per data
@@ -359,3 +271,96 @@ def insert_content(data, doc, container_width, container=None, cell=None):
     if not container: info('.. content insertion completed : {0} ms\n'.format(current_time - start_time))
 
     return table
+
+
+def merged_cell_width(row, col, start_row, start_col, merges, column_widths):
+    cell_width = 0
+    for merge in merges:
+        if merge['startRowIndex'] == (row + start_row) and merge['startColumnIndex'] == (col + start_col):
+            for c in range(col, merge['endColumnIndex'] - start_col):
+                cell_width = cell_width + column_widths[c]
+
+    if cell_width == 0:
+        return column_widths[col]
+    else:
+        return cell_width
+
+
+def set_header(doc, section, header_first, header_odd, header_even, actual_width, linked_to_previous=False):
+    first_page_header = section.first_page_header
+    odd_page_header = section.header
+    even_page_header = section.even_page_header
+
+    section.first_page_header.is_linked_to_previous = linked_to_previous
+    section.header.is_linked_to_previous = linked_to_previous
+    section.even_page_header.is_linked_to_previous = linked_to_previous
+
+    if len(first_page_header.tables) == 0:
+        if header_first is not None: insert_content(header_first, doc, actual_width, container=first_page_header, cell=None)
+
+    if len(odd_page_header.tables) == 0:
+        if header_odd is not None: insert_content(header_odd, doc, actual_width, container=odd_page_header, cell=None)
+
+    if len(even_page_header.tables) == 0:
+        if header_even is not None: insert_content(header_even, doc, actual_width, container=even_page_header, cell=None)
+
+
+def set_footer(doc, section, footer_first, footer_odd, footer_even, actual_width, linked_to_previous=False):
+    first_page_footer = section.first_page_footer
+    odd_page_footer = section.footer
+    even_page_footer = section.even_page_footer
+
+    section.first_page_footer.is_linked_to_previous = linked_to_previous
+    section.footer.is_linked_to_previous = linked_to_previous
+    section.even_page_footer.is_linked_to_previous = linked_to_previous
+
+    if len(first_page_footer.tables) == 0:
+        if footer_first is not None: insert_content(footer_first, doc, actual_width, container=first_page_footer, cell=None)
+
+    if len(odd_page_footer.tables) == 0:
+        if footer_odd is not None: insert_content(footer_odd, doc, actual_width, container=odd_page_footer, cell=None)
+
+    if len(even_page_footer.tables) == 0:
+        if footer_even is not None: insert_content(footer_even, doc, actual_width, container=even_page_footer, cell=None)
+
+
+def add_section(doc, section_data, section_spec, use_existing=False):
+    if section_spec['break'] == 'CONTINUOUS':
+        # if it is the only section, do not add, just get the last (current) section
+        if use_existing:
+            section = doc.sections[-1]
+        else:
+            section = doc.add_section(WD_SECTION.CONTINUOUS)
+    else:
+        # if it is the only section, do not add, just get the last (current) section
+        if use_existing:
+            section = doc.sections[-1]
+        else:
+            section = doc.add_section(WD_SECTION.NEW_PAGE)
+
+    if section_spec['orient'] == 'LANDSCAPE':
+        section.orient = WD_ORIENT.LANDSCAPE
+    else:
+        section.orient = WD_ORIENT.PORTRAIT
+
+    section.page_width = Inches(section_spec['page_width'])
+    section.page_height = Inches(section_spec['page_height'])
+    section.left_margin = Inches(section_spec['left_margin'])
+    section.right_margin = Inches(section_spec['right_margin'])
+    section.top_margin = Inches(section_spec['top_margin'])
+    section.bottom_margin = Inches(section_spec['bottom_margin'])
+    section.header_distance = Inches(section_spec['header_distance'])
+    section.footer_distance = Inches(section_spec['footer_distance'])
+    section.gutter = Inches(section_spec['gutter'])
+    section.different_first_page_header_footer = section_data['different-first-page-header-footer']
+
+    # get the actual width
+    actual_width = section.page_width.inches - section.left_margin.inches - section.right_margin.inches - section.gutter.inches
+
+    # set header if it is not set already
+    set_header(doc, section, section_data['header-first'], section_data['header-odd'], section_data['header-even'], actual_width)
+
+    # set footer if it is not set already
+    set_footer(doc, section, section_data['footer-first'], section_data['footer-odd'], section_data['footer-even'], actual_width)
+
+    return section

@@ -31,7 +31,8 @@ pdf2image
 # blockdiag
 # seqdiag
 # nwdiag
-# pysvg-py3
+pysvg
+pysvg-py3
 
 # xlsxwriter
 # openpyxl
