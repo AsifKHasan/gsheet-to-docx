@@ -202,9 +202,37 @@ def insert_content(data, doc, container_width, container=None, cell=None, repeat
         if out_of_cell_content:
             out_of_cell_content_rows.append(row_num)
 
+    # we have found all rows which are to be rendered out-of-cell that is directly into the doc, not inside any existing table cell
+    # now we have to segment the rows into table segments and out-of-cell segments
+    start_at_row = start_row + 1
+    row_segments = []
     for row_num in out_of_cell_content_rows:
-        debug('out-of-cell content found at row : {0}/{1}'.format(row_num, worksheet_rows))
+        if row_num > start_at_row:
+            row_segments.append({'table': (start_at_row, row_num - 1)})
 
+        row_segments.append({'no-table': (row_num, row_num)})
+        start_at_row = row_num + 1
+
+    # there may be trailing rows after the last out-of-cell content row, they will merge into a table
+    if start_at_row <= worksheet_rows:
+        row_segments.append({'table': (start_at_row, worksheet_rows)})
+
+    # we have got the segments, now we render them - if table, we render as table, if no-table, we render into the doc
+    segment_count = 0
+    for row_segment in row_segments:
+        segment_count = segment_count + 1
+        if 'table' in row_segment:
+            debug('table segment {0}/{1} : spanning rows [{2}:{3}]'.format(segment_count, len(row_segments), row_segment['table'][0], row_segment['table'][1]))
+            table = insert_content_as_table()
+        elif 'no-table' in row_segment:
+            debug('no-table segment {0}/{1} : at row [{2}]'.format(segment_count, len(row_segments), row_segment['no-table'][0]))
+            insert_content_into_doc()
+        else:
+            warn('something unsual happened - unknown row segment type')
+
+
+
+def insert_content_as_table(data, doc, container_width, container=None, cell=None, repeat_rows=0)
     # calculate table dimension
     table_rows = data['sheets'][0]['properties']['gridProperties']['rowCount'] - start_row
     table_cols = data['sheets'][0]['properties']['gridProperties']['columnCount'] - start_col
