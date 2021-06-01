@@ -162,7 +162,48 @@ def insert_content(data, doc, container_width, container=None, cell=None, repeat
     if not container: debug('.. inserting contents')
     last_time = current_time
 
+    # we have a concept of in-cell content and out-of-cell content
+    # in-cell content means the content will go inside an existing table cell (specified by a 'content' key with value anything but 'out-of-cell' or no 'content' key at all in 'notes')
+    # out-of-cell content means the content will be inserted as a new table directly in the doc (specified by a 'content' key with value 'out-of-cell' in 'notes')
+
+    # when there is an out-of-cell content, we need to put the content inside the document by getting out of any table cell if we are already inside any cell
+    # this means we need to look into the first column of each row and identify if we have an out-of-cell content
+    # if we have such a content, anything prior to this content will go in one table, the out-of-cell content will go into the document and subsequent cells will go into another table after the put-of-cell content
+    # we basically need content segmentation/segrefation into parts
+
     start_row, start_col = data['sheets'][0]['data'][0]['startRow'], data['sheets'][0]['data'][0]['startColumn']
+    worksheet_rows = data['sheets'][0]['properties']['gridProperties']['rowCount']
+    worksheet_cols = data['sheets'][0]['properties']['gridProperties']['columnCount']
+
+    row_data = data['sheets'][0]['data'][0]['rowData']
+    out_of_cell_content_rows = []
+    # we are looking for out-of-cell content
+    for row_num in range(start_row + 1, worksheet_rows + 1):
+        # we look only in the first column
+        # debug('at row : {0}/{1}'.format(row_num, worksheet_rows))
+        row_data_index = row_num - start_row - 1
+
+        # get the first cell notes
+        first_cell_data = row_data[row_data_index]['values'][0]
+        first_cell_note_json = {}
+        if 'note' in first_cell_data:
+            try:
+                first_cell_note_json = json.loads(first_cell_data['note'])
+            except json.JSONDecodeError:
+                pass
+
+        # see the 'content' tag
+        out_of_cell_content = False
+        if 'content' in first_cell_note_json:
+            if first_cell_note_json['content'] == 'out-of-cell':
+                out_of_cell_content = True
+
+        # if content is out of cell, mark the row
+        if out_of_cell_content:
+            out_of_cell_content_rows.append(row_num)
+
+    for row_num in out_of_cell_content_rows:
+        debug('out-of-cell content found at row : {0}/{1}'.format(row_num, worksheet_rows))
 
     # calculate table dimension
     table_rows = data['sheets'][0]['properties']['gridProperties']['rowCount'] - start_row
