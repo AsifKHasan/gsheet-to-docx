@@ -19,7 +19,7 @@ from helper.docx.docx_util import *
 VALIGN = {'TOP': WD_CELL_VERTICAL_ALIGNMENT.TOP, 'MIDDLE': WD_CELL_VERTICAL_ALIGNMENT.CENTER, 'BOTTOM': WD_CELL_VERTICAL_ALIGNMENT.BOTTOM}
 HALIGN = {'LEFT': WD_ALIGN_PARAGRAPH.LEFT, 'CENTER': WD_ALIGN_PARAGRAPH.CENTER, 'RIGHT': WD_ALIGN_PARAGRAPH.RIGHT, 'JUSTIFY': WD_ALIGN_PARAGRAPH.JUSTIFY}
 
-def render_cell(doc, cell, cell_data, width, r, c, start_row, start_col, merge_data, column_widths, table_spacing):
+def render_cotent_in_cell(doc, cell, cell_data, width, r, c, start_row, start_col, merge_data, column_widths, table_spacing):
     cell.width = Inches(width)
     paragraph = cell.paragraphs[0]
 
@@ -108,7 +108,136 @@ def render_cell(doc, cell, cell_data, width, r, c, start_row, start_col, merge_d
     # before rendering cell, see if it embeds another worksheet
     if 'contents' in cell_data:
         table = insert_content(cell_data['contents'], doc, cell_width, container=None, cell=cell)
-        polish_table(table)
+        # polish_table(table)
+        return
+
+    # texts
+    if 'formattedValue' not in cell_data:
+        return
+
+    text = cell_data['formattedValue']
+
+    # process notes
+    # note specifies style
+    if 'style' in note_json:
+        paragraph.add_run(text)
+        paragraph.style = note_json['style']
+        return
+
+    # note specifies page numbering
+    if 'page-number' in note_json:
+        append_page_number_with_pages(paragraph)
+        #append_page_number_only(paragraph)
+        paragraph.style = note_json['page-number']
+        return
+
+    # finally cell content, add runs
+    if 'textFormatRuns' in cell_data:
+        text_runs = cell_data['textFormatRuns']
+        # split the text into run-texts
+        run_texts = []
+        for i in range(len(text_runs) - 1, -1, -1):
+            text_run = text_runs[i]
+            if 'startIndex' in text_run:
+                run_texts.insert(0, text[text_run['startIndex']:])
+                text = text[:text_run['startIndex']]
+            else:
+                run_texts.insert(0, text)
+
+        # now render runs
+        for i in range(0, len(text_runs)):
+            # get formatting
+            format = text_runs[i]['format']
+
+            run = paragraph.add_run(run_texts[i])
+            set_character_style(run, {**text_format, **format})
+    else:
+        run = paragraph.add_run(text)
+        set_character_style(run, text_format)
+
+
+def render_cotent_in_doc(doc, cell_data):
+    paragraph = doc.add_paragraph()
+
+    # handle the notes first
+    # if there is a note, see if it is a JSON, it may contain style, page-numering, new-page, keep-with-next directive etc.
+    note_json = {}
+    if 'note' in cell_data:
+        try:
+            note_json = json.loads(cell_data['note'])
+        except json.JSONDecodeError:
+            pass
+
+    # process new-page
+    if 'new-page' in note_json:
+        # return the cell location so that the page break can be rendered later
+        pf = paragraph.paragraph_format
+        pf.page_break_before = True
+
+    # process keep-with-next
+    if 'keep-with-next' in note_json:
+        # return the cell location so that the page break can be rendered later
+        pf = paragraph.paragraph_format
+        pf.keep_with_next = True
+
+    # do some special processing if the cell_data is {}
+    if cell_data == {} or 'effectiveFormat' not in cell_data:
+        return
+
+    text_format = cell_data['effectiveFormat']['textFormat']
+    effective_format = cell_data['effectiveFormat']
+
+    # alignments
+    # cell.vertical_alignment = VALIGN[effective_format['verticalAlignment']]
+    # if 'horizontalAlignment' in effective_format:
+    #     paragraph.alignment = HALIGN[effective_format['horizontalAlignment']]
+
+    # background color
+    # bgcolor = cell_data['effectiveFormat']['backgroundColor']
+    # if bgcolor != {}:
+    #     red = int(bgcolor['red'] * 255) if 'red' in bgcolor else 0
+    #     green = int(bgcolor['green'] * 255) if 'green' in bgcolor else 0
+    #     blue = int(bgcolor['blue'] * 255) if 'blue' in bgcolor else 0
+    #     set_cell_bgcolor(cell, RGBColor(red, green, blue))
+
+    # text-rotation
+    # if 'textRotation' in effective_format:
+    #     text_rotation = effective_format['textRotation']
+    #     rotate_text(cell, 'btLr')
+
+    # borders
+    # if 'borders' in cell_data['effectiveFormat']:
+    #     borders = cell_data['effectiveFormat']['borders']
+    #     set_cell_border(cell, top=ooxml_border_from_gsheet_border(borders, 'top'), bottom=ooxml_border_from_gsheet_border(borders, 'bottom'), start=ooxml_border_from_gsheet_border(borders, 'left'), end=ooxml_border_from_gsheet_border(borders, 'right'))
+
+    # cell can be merged, so we need width after merge (in Inches)
+    # cell_width = merged_cell_width(r, c, start_row, start_col, merge_data, column_widths)
+
+    # images
+    if 'userEnteredValue' in cell_data:
+        userEnteredValue = cell_data['userEnteredValue']
+        if 'image' in userEnteredValue:
+            image = userEnteredValue['image']
+            run = paragraph.add_run()
+
+            # even now the width may exceed actual cell width, we need to adjust for that
+            # determine cell_width based on merge scenario
+            dpi_x = 150 if image['dpi'][0] == 0 else image['dpi'][0]
+            dpi_y = 150 if image['dpi'][1] == 0 else image['dpi'][1]
+            image_width = image['width'] / dpi_x
+            image_height = image['height'] / dpi_y
+            if image_width > cell_width:
+                adjust_ratio = (cell_width / image_width)
+                # keep a padding of 0.1 inch
+                image_width = cell_width - 0.2
+                image_height = image_height * adjust_ratio
+
+            run.add_picture(image['path'], height=Inches(image_height), width=Inches(image_width))
+
+    # before rendering cell, see if it embeds another worksheet
+    if 'contents' in cell_data:
+        table = insert_content(cell_data['contents'], doc, cell_width, container=None, cell=cell)
+        # polish_table(table)
         return
 
     # texts
@@ -157,10 +286,7 @@ def render_cell(doc, cell, cell_data, width, r, c, start_row, start_col, merge_d
 
 
 def insert_content(data, doc, container_width, container=None, cell=None, repeat_rows=0):
-    start_time = int(round(time.time() * 1000))
-    current_time = int(round(time.time() * 1000))
     if not container: debug('.. inserting contents')
-    last_time = current_time
 
     # we have a concept of in-cell content and out-of-cell content
     # in-cell content means the content will go inside an existing table cell (specified by a 'content' key with value anything but 'out-of-cell' or no 'content' key at all in 'notes')
@@ -222,19 +348,41 @@ def insert_content(data, doc, container_width, container=None, cell=None, repeat
     for row_segment in row_segments:
         segment_count = segment_count + 1
         if 'table' in row_segment:
-            debug('table segment {0}/{1} : spanning rows [{2}:{3}]'.format(segment_count, len(row_segments), row_segment['table'][0], row_segment['table'][1]))
-            table = insert_content_as_table()
+            # debug('table segment {0}/{1} : spanning rows [{2}:{3}]'.format(segment_count, len(row_segments), row_segment['table'][0], row_segment['table'][1]))
+            insert_content_as_table(data=data, doc=doc, start_row=start_row, start_col=start_col, row_from=row_segment['table'][0], row_to=row_segment['table'][1], container_width=container_width, container=container, cell=cell, repeat_rows=repeat_rows)
         elif 'no-table' in row_segment:
-            debug('no-table segment {0}/{1} : at row [{2}]'.format(segment_count, len(row_segments), row_segment['no-table'][0]))
-            insert_content_into_doc()
+            # debug('no-table segment {0}/{1} : at row [{2}]'.format(segment_count, len(row_segments), row_segment['no-table'][0]))
+            insert_content_into_doc(data=data, doc=doc, start_row=start_row, row_from=row_segment['no-table'][0], container_width=container_width)
         else:
             warn('something unsual happened - unknown row segment type')
 
 
+def insert_content_into_doc(data, doc, start_row, row_from, container_width):
+    # the content is by default one row content and we are only interested in the first column value
+    row_data = data['sheets'][0]['data'][0]['rowData']
+    first_cell_data = row_data[row_from - (start_row + 1)]['values'][0]
 
-def insert_content_as_table(data, doc, container_width, container=None, cell=None, repeat_rows=0)
+    # thre may be two cases
+    # the value may have a 'contents' object in which case we call insert_content
+    if 'contents' in first_cell_data:
+        # Hack: we put a blank small-height paragraph so that it does not get merged with any previous table
+        paragraph = doc.add_paragraph()
+        paragraph.style = 'Calibri-2-Gray8'
+        insert_content(first_cell_data['contents'], doc, container_width, container=None, cell=None)
+        # polish_table(table)
+
+    # or it may be anything else
+    else:
+        render_cotent_in_doc(doc, first_cell_data)
+
+
+def insert_content_as_table(data, doc, start_row, start_col, row_from, row_to, container_width, container=None, cell=None, repeat_rows=0):
+    start_time = int(round(time.time() * 1000))
+    current_time = int(round(time.time() * 1000))
+    last_time = current_time
+
     # calculate table dimension
-    table_rows = data['sheets'][0]['properties']['gridProperties']['rowCount'] - start_row
+    table_rows = row_to - row_from + 1
     table_cols = data['sheets'][0]['properties']['gridProperties']['columnCount'] - start_col
 
     merge_data = {}
@@ -248,11 +396,11 @@ def insert_content_as_table(data, doc, container_width, container=None, cell=Non
 	# table to be added inside a cell
     elif cell is not None:
 		# insert the table in the very first paragraph of the cell
-        debug('embedding new table inside an existing cell'.format())
+        # debug('embedding new table inside an existing cell, size: {0} x {1}'.format(table_rows, table_cols))
         cell.paragraphs[0].style = 'Calibri-2-Gray8'
         table = cell.add_table(table_rows, table_cols)
     else:
-        # debug('embedding new table inside the doc'.format())
+        # debug('embedding new table inside the doc, size: {0} x {1}'.format(table_rows, table_cols))
         table = doc.add_table(table_rows, table_cols)
 
     # resize columns as per data
@@ -267,10 +415,11 @@ def insert_content_as_table(data, doc, container_width, container=None, cell=Non
     last_time = current_time
 
     # populate cells
-    total_rows = len(data['sheets'][0]['data'][0]['rowData'])
+    # total_rows = len(data['sheets'][0]['data'][0]['rowData'])
+    total_rows = table_rows
     i = 0
     current_time = int(round(time.time() * 1000))
-    if not container: info('  .. rendering cell for {0} rows'.format(total_rows))
+    if not container: info('  .. rendering {0} rows'.format(total_rows))
     last_time = current_time
 
     # TODO: handle table related instructions from notes. table related instructions are given as notes in the very first cell (row 0, col 0). they may be
@@ -282,7 +431,7 @@ def insert_content_as_table(data, doc, container_width, container=None, cell=Non
 
     # get the first cell notes
     # if there is a note, see if it is a JSON, it may contain table specific styling directives
-    first_cell_data = row_data[0]['values'][0]
+    first_cell_data = row_data[row_from - (start_row + 1)]['values'][0]
     first_cell_note_json = {}
     if 'note' in first_cell_data:
         try:
@@ -305,19 +454,22 @@ def insert_content_as_table(data, doc, container_width, container=None, cell=Non
     else:
         repeating_row_count = 0
 
-    for r in range(0, len(row_data)):
-        if 'values' in row_data[r]:
-            row = table.row_cells(r)
-            row_values = row_data[r]['values']
+    table_row_index = 0
+    for data_row_index in range(row_from - (start_row + 1), row_to - (start_row + 0)):
+        if 'values' in row_data[data_row_index]:
+            row = table.row_cells(table_row_index)
+            row_values = row_data[data_row_index]['values']
 
             for c in range(0, len(row_values)):
-                # render_cell () is the main work function for rendering an individual cell (eg., gsheet cell -> docx table cell)
-                render_cell(doc, row[c], row_values[c], column_widths[c], r, c, start_row, start_col, merge_data, column_widths, table_spacing)
+                # render_cotent_in_cell () is the main work function for rendering an individual cell (eg., gsheet cell -> docx table cell)
+                render_cotent_in_cell(doc, row[c], row_values[c], column_widths[c], data_row_index, c, start_row, start_col, merge_data, column_widths, table_spacing)
 
-            if r % 100 == 0:
+            if table_row_index % 100 == 0:
                 current_time = int(round(time.time() * 1000))
-                if not container: info('  .... cell rendered for {0}/{1} rows : {2} ms'.format(r, total_rows, current_time - last_time))
+                if not container: info('  .... cell rendered for {0}/{1} rows : {2} ms'.format(table_row_index, total_rows, current_time - last_time))
                 last_time = current_time
+
+        table_row_index = table_row_index + 1
 
     current_time = int(round(time.time() * 1000))
     if not container: info('  .. rendering cell complete for {0} rows : {1} ms\n'.format(total_rows, current_time - start_time))
@@ -326,24 +478,32 @@ def insert_content_as_table(data, doc, container_width, container=None, cell=Non
     # merge cells according to data
     if not container: info('  .. merging cells'.format(current_time - last_time))
     for m in merge_data:
-        startRowIndex = m['startRowIndex'] - start_row
-        endRowIndex = m['endRowIndex'] - start_row - 1
-        startColumnIndex = m['startColumnIndex'] - start_col
-        endColumnIndex = m['endColumnIndex'] - start_col - 1
-        starting_cell = table.cell(startRowIndex, startColumnIndex)
+        # check if the merge is applicable for this table's rows
+        if m['startRowIndex'] < (row_from - 1) or m['endRowIndex'] > (row_to):
+            continue
+
+        start_row_index = m['startRowIndex'] - (row_from - start_row) - 1
+        end_row_index = m['endRowIndex'] - (row_from - start_row) - 2
+
+        start_column_index = m['startColumnIndex'] - start_col
+        end_column_index = m['endColumnIndex'] - start_col - 1
+        # debug('merging cell ({0}, {1}) with cell ({2}, {3})'.format(start_row_index, start_column_index, end_row_index, end_column_index))
+        starting_cell = table.cell(start_row_index, start_column_index)
+
         # all cells within the merge range need to have the same border as the first cell
-        for r in range(startRowIndex, endRowIndex + 1):
-            for c in range(startColumnIndex, endColumnIndex + 1):
-                if (r, c) != (startRowIndex, startColumnIndex):
+        for r in range(start_row_index, end_row_index + 1):
+            for c in range(start_column_index, end_column_index + 1):
+                if (r, c) != (start_row_index, start_column_index):
                     to_cell = table.cell(r, c)
+                    # TODO: copy border to all cells
                     copy_cell_border(starting_cell, to_cell)
 
-        ending_cell = table.cell(endRowIndex, endColumnIndex)
+        ending_cell = table.cell(end_row_index, end_column_index)
         starting_cell.merge(ending_cell)
 
     # handle repeat_rows
     if repeating_row_count > 0:
-        debug('reapating row - {0}'.format(repeating_row_count))
+        # debug('repeating row : {0}'.format(repeating_row_count))
         set_repeat_table_header(table.rows[repeating_row_count-1])
 
     current_time = int(round(time.time() * 1000))
