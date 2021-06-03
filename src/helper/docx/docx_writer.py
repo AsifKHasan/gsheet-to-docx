@@ -19,7 +19,7 @@ from helper.docx.docx_util import *
 VALIGN = {'TOP': WD_CELL_VERTICAL_ALIGNMENT.TOP, 'MIDDLE': WD_CELL_VERTICAL_ALIGNMENT.CENTER, 'BOTTOM': WD_CELL_VERTICAL_ALIGNMENT.BOTTOM}
 HALIGN = {'LEFT': WD_ALIGN_PARAGRAPH.LEFT, 'CENTER': WD_ALIGN_PARAGRAPH.CENTER, 'RIGHT': WD_ALIGN_PARAGRAPH.RIGHT, 'JUSTIFY': WD_ALIGN_PARAGRAPH.JUSTIFY}
 
-def render_cotent_in_cell(doc, cell, cell_data, width, r, c, start_row, start_col, merge_data, column_widths, table_spacing):
+def render_content_in_cell(doc, cell, cell_data, width, r, c, start_row, start_col, merge_data, column_widths, table_spacing):
     cell.width = Inches(width)
     paragraph = cell.paragraphs[0]
 
@@ -156,7 +156,7 @@ def render_cotent_in_cell(doc, cell, cell_data, width, r, c, start_row, start_co
         set_character_style(run, text_format)
 
 
-def render_cotent_in_doc(doc, cell_data):
+def render_content_in_doc(doc, cell_data):
     paragraph = doc.add_paragraph()
 
     # handle the notes first
@@ -189,29 +189,21 @@ def render_cotent_in_doc(doc, cell_data):
 
     # alignments
     # cell.vertical_alignment = VALIGN[effective_format['verticalAlignment']]
-    # if 'horizontalAlignment' in effective_format:
-    #     paragraph.alignment = HALIGN[effective_format['horizontalAlignment']]
-
-    # background color
-    # bgcolor = cell_data['effectiveFormat']['backgroundColor']
-    # if bgcolor != {}:
-    #     red = int(bgcolor['red'] * 255) if 'red' in bgcolor else 0
-    #     green = int(bgcolor['green'] * 255) if 'green' in bgcolor else 0
-    #     blue = int(bgcolor['blue'] * 255) if 'blue' in bgcolor else 0
-    #     set_cell_bgcolor(cell, RGBColor(red, green, blue))
-
-    # text-rotation
-    # if 'textRotation' in effective_format:
-    #     text_rotation = effective_format['textRotation']
-    #     rotate_text(cell, 'btLr')
+    if 'horizontalAlignment' in effective_format:
+        paragraph.alignment = HALIGN[effective_format['horizontalAlignment']]
 
     # borders
-    # if 'borders' in cell_data['effectiveFormat']:
-    #     borders = cell_data['effectiveFormat']['borders']
-    #     set_cell_border(cell, top=ooxml_border_from_gsheet_border(borders, 'top'), bottom=ooxml_border_from_gsheet_border(borders, 'bottom'), start=ooxml_border_from_gsheet_border(borders, 'left'), end=ooxml_border_from_gsheet_border(borders, 'right'))
+    if 'borders' in cell_data['effectiveFormat']:
+        borders = cell_data['effectiveFormat']['borders']
+        set_paragraph_border(paragraph, top=ooxml_border_from_gsheet_border(borders, 'top'), bottom=ooxml_border_from_gsheet_border(borders, 'bottom'), start=ooxml_border_from_gsheet_border(borders, 'left'), end=ooxml_border_from_gsheet_border(borders, 'right'))
 
-    # cell can be merged, so we need width after merge (in Inches)
-    # cell_width = merged_cell_width(r, c, start_row, start_col, merge_data, column_widths)
+    # background color
+    bgcolor = cell_data['effectiveFormat']['backgroundColor']
+    if bgcolor != {}:
+        red = int(bgcolor['red'] * 255) if 'red' in bgcolor else 0
+        green = int(bgcolor['green'] * 255) if 'green' in bgcolor else 0
+        blue = int(bgcolor['blue'] * 255) if 'blue' in bgcolor else 0
+        set_paragraph_bgcolor(paragraph, RGBColor(red, green, blue))
 
     # images
     if 'userEnteredValue' in cell_data:
@@ -373,7 +365,7 @@ def insert_content_into_doc(data, doc, start_row, row_from, container_width):
 
     # or it may be anything else
     else:
-        render_cotent_in_doc(doc, first_cell_data)
+        render_content_in_doc(doc, first_cell_data)
 
 
 def insert_content_as_table(data, doc, start_row, start_col, row_from, row_to, container_width, container=None, cell=None, repeat_rows=0):
@@ -461,8 +453,8 @@ def insert_content_as_table(data, doc, start_row, start_col, row_from, row_to, c
             row_values = row_data[data_row_index]['values']
 
             for c in range(0, len(row_values)):
-                # render_cotent_in_cell () is the main work function for rendering an individual cell (eg., gsheet cell -> docx table cell)
-                render_cotent_in_cell(doc, row[c], row_values[c], column_widths[c], data_row_index, c, start_row, start_col, merge_data, column_widths, table_spacing)
+                # render_content_in_cell () is the main work function for rendering an individual cell (eg., gsheet cell -> docx table cell)
+                render_content_in_cell(doc, row[c], row_values[c], column_widths[c], data_row_index, c, start_row, start_col, merge_data, column_widths, table_spacing)
 
             if table_row_index % 100 == 0:
                 current_time = int(round(time.time() * 1000))
@@ -502,9 +494,9 @@ def insert_content_as_table(data, doc, start_row, start_col, row_from, row_to, c
         starting_cell.merge(ending_cell)
 
     # handle repeat_rows
-    if repeating_row_count > 0:
+    for r in range(0, repeating_row_count):
         # debug('repeating row : {0}'.format(repeating_row_count))
-        set_repeat_table_header(table.rows[repeating_row_count-1])
+        set_repeat_table_header(table.rows[r])
 
     current_time = int(round(time.time() * 1000))
     if not container: info('  .. cells merged : {0} ms\n'.format(current_time - last_time))

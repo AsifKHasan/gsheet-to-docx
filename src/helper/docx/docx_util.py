@@ -303,6 +303,10 @@ def set_cell_bgcolor(cell, color):
     shading_elm_1 = parse_xml(r'<w:shd {} w:fill="{}"/>'.format(nsdecls('w'), color))
     cell._tc.get_or_add_tcPr().append(shading_elm_1)
 
+def set_paragraph_bgcolor(paragraph, color):
+    shading_elm_1 = parse_xml(r'<w:shd {} w:fill="{}"/>'.format(nsdecls('w'), color))
+    paragraph._p.get_or_add_pPr().append(shading_elm_1)
+
 def copy_cell_border(from_cell: _Cell, to_cell: _Cell):
     from_tc = from_cell._tc
     from_tcPr = from_tc.get_or_add_tcPr()
@@ -319,7 +323,7 @@ def copy_cell_border(from_cell: _Cell, to_cell: _Cell):
 
 def set_cell_border(cell: _Cell, **kwargs):
     """
-    Set cell`s border
+    Set cell's border
     Usage:
 
     set_cell_border(
@@ -350,6 +354,47 @@ def set_cell_border(cell: _Cell, **kwargs):
             if element is None:
                 element = OxmlElement(tag)
                 tcBorders.append(element)
+
+            # looks like order of attributes is important
+            for key in ["sz", "val", "color", "space", "shadow"]:
+                if key in edge_data:
+                    element.set(qn('w:{}'.format(key)), str(edge_data[key]))
+
+def set_paragraph_border(paragraph, **kwargs):
+    """
+    Set paragraph's border
+    Usage:
+
+    set_paragraph_border(
+        paragraph,
+        top={"sz": 12, "val": "single", "color": "#FF0000", "space": "0"},
+        bottom={"sz": 12, "color": "#00FF00", "val": "single"},
+        start={"sz": 24, "val": "dashed", "shadow": "true"},
+        end={"sz": 12, "val": "dashed"},
+    )
+    """
+    pPr = paragraph._p.get_or_add_pPr()
+
+    # check for tag existnace, if none found, then create one
+    pBorders = pPr.first_child_found_in("w:pBorders")
+    if pBorders is None:
+        pBorders = OxmlElement('w:pBorders')
+        pPr.append(pBorders)
+
+    # list over all available tags
+    for edge in ('top', 'start', 'bottom', 'end'):
+        edge_data = kwargs.get(edge)
+        if edge_data:
+            edge_str = edge
+            if edge_str == 'start': edge_str = 'left'
+            if edge_str == 'end': edge_str = 'right'
+            tag = 'w:{}'.format(edge_str)
+
+            # check for tag existnace, if none found, then create one
+            element = pBorders.find(qn(tag))
+            if element is None:
+                element = OxmlElement(tag)
+                pBorders.append(element)
 
             # looks like order of attributes is important
             for key in ["sz", "val", "color", "space", "shadow"]:
