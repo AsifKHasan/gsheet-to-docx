@@ -169,9 +169,9 @@ def download_image(image_formula, tmp_dir, row_height):
     if len(s) >= 1:
         url = s[0]
 
-        # localpath is the last term if it ends with png/jpg, if not
+        # localpath is the last term if it ends with png/jpg/gif, if not
         url_splitted = url.split('/')
-        if url_splitted[-1].endswith('.png') or url_splitted[-1].endswith('.jpg'):
+        if url_splitted[-1].endswith('.png') or url_splitted[-1].endswith('.jpg') or url_splitted[-1].endswith('.gif'):
             local_path = '{0}/{1}'.format(tmp_dir, url_splitted[-1])
 
         # if it is owncloud, (https://storage.brilliant.com.bd/s/IPO46mdbcetahMf/download) we use the penaltimate term and append a .png
