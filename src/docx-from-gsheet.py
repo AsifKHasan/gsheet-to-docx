@@ -4,6 +4,8 @@ usage:
 ./docx-from-gsheet.py --config '../conf/config.yml'
 python docx-from-gsheet.py --config "../conf/config.yml"
 pip list --outdated --format=freeze | grep -v '^\-e' | cut -d = -f 1  | xargs -n1 pip install -U
+
+[soffice/libreoffice] --headless --convert-to pdf docx-to-convert.docx
 '''
 import os
 import sys
