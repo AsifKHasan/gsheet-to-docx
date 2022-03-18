@@ -28,10 +28,11 @@ from helper.docx.docx_util import *
 
 class DocxFromGsheet(object):
 
-	def __init__(self, config_path):
+	def __init__(self, config_path, gsheet=None):
 		self.start_time = int(round(time.time() * 1000))
 		self._config_path = os.path.abspath(config_path)
 		self._data = {}
+		self._gsheet = gsheet
 
 	def update_toc(self, docx_path, generate_pdf):
 		doc_path = os.path.abspath(docx_path)
@@ -91,6 +92,10 @@ class DocxFromGsheet(object):
 		self._CONFIG = yaml.load(open(self._config_path, 'r', encoding='utf-8'), Loader=yaml.FullLoader)
 		config_dir = os.path.dirname(self._config_path)
 
+		# if gsheet name was provided as parameter, override the configuration
+		if self._gsheet:
+			self._CONFIG['gsheets'] = [self._gsheet]
+
 		self._CONFIG['dirs']['data-dir'] = os.path.abspath('{0}/{1}'.format(config_dir, self._CONFIG['dirs']['data-dir']))
 		self._CONFIG['dirs']['output-dir'] = os.path.abspath('{0}/{1}'.format(config_dir, self._CONFIG['dirs']['output-dir']))
 		self._CONFIG['dirs']['temp-dir'] = os.path.abspath('{0}/tmp'.format(self._CONFIG['dirs']['output-dir']))
@@ -117,7 +122,8 @@ if __name__ == '__main__':
 	# construct the argument parse and parse the arguments
 	ap = argparse.ArgumentParser()
 	ap.add_argument("-c", "--config", required=True, help="configuration yml path")
+	ap.add_argument("-g", "--gsheet", required=False, help="gsheet name to override gsheet list provided in configuration")
 	args = vars(ap.parse_args())
 
-	generator = DocxFromGsheet(args["config"])
+	generator = DocxFromGsheet(args["config"], args["gsheet"])
 	generator.run()
