@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 '''
-Helper to initialize and manipulate docx styles, mostly custom styles not present in the template docx 
+Helper to initialize and manipulate docx styles, mostly custom styles not present in the template docx
 '''
 
 import yaml
@@ -22,18 +22,19 @@ class DocxHelper(object):
 
     def change_builtin_styles(self):
         # change Normal to make it Calibri 10pt
-        normal = self._doc.styles['Normal']
-        font = normal.font
-        font.name = 'Calibri'
-        font.size = Pt(10)
+        # normal = self._doc.styles['Normal']
+        # font = normal.font
+        # font.name = 'Calibri'
+        # font.size = Pt(10)
 
         # change Heading 1 so that it starts in a new page always
-        h1 = self._doc.styles['Heading 1']
-        h1.paragraph_format.page_break_before = True
+        # h1 = self._doc.styles['Heading 1']
+        # h1.paragraph_format.page_break_before = True
 
         # change Heading 2 so that content after it is always together
-        h2 = self._doc.styles['Heading 2']
-        h2.paragraph_format.keep_with_next = True
+        # h2 = self._doc.styles['Heading 2']
+        # h2.paragraph_format.keep_with_next = True
+        pass
 
     def load_styles(self):
         sd = yaml.load(open(self._STYLE_DATA, 'r', encoding='utf-8'), Loader=yaml.FullLoader)
