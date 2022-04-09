@@ -20,12 +20,14 @@ class GsheetHelper(object):
     __instance = None
 
     def __new__(cls):
+        # we only need one singeton instance of this class
         if GsheetHelper.__instance is None:
             GsheetHelper.__instance = object.__new__(cls)
 
         return GsheetHelper.__instance
 
     def init(self, config):
+        # as we go further we put everything inside a single dict _context
         self._context = {}
 
         _G = pygsheets.authorize(service_account_file=config['files']['google-cred'])
